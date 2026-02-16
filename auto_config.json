@@ -1,0 +1,99 @@
+{
+  "effect_name": "Icosahedron Sphere",
+  "interactive": true,
+  "mouse_sensitivity": 2.5,
+  "touchpad_sensitivity": 0.3,
+  "effect_settings": {
+    "audio_reactive": true,
+    "audio_smoothing": 0.8500000238418579,
+    "background_color": [
+      0.1137000024318695,
+      0.1137000024318695,
+      0.12549999356269836
+    ],
+    "constant_rotation_speed": 0.0,
+    "max_rotation_speed": 3.0,
+    "min_rotation_speed": 0.0010000000474974513,
+    "noise_amp": 0.0,
+    "oscill_amp": 0.0,
+    "oscill_freq": 1.0,
+    "pulse_amp": 0.0,
+    "rotation_decay": 0.9800000190734863,
+    "sphere_scale": 1.0,
+    "subdivisions": 3,
+    "twist_amp": 0.0,
+    "wave_amp": 0.0,
+    "wave_freq": 1.0,
+    "wireframe_color": [
+      0.5,
+      0.5,
+      0.699999988079071
+    ],
+    "wireframe_mode": true
+  },
+  "effects_defaults": {
+    "Hilbert Cube": {
+      "cube_color": [
+        0.800000011920929,
+        0.800000011920929,
+        0.800000011920929
+      ],
+      "curve_color": [
+        1.0,
+        0.5,
+        0.0
+      ],
+      "draw_cube_outline": true,
+      "hilbert_order": 4,
+      "rotation_decay": 0.949999988079071
+    },
+    "Icosahedron Sphere": {
+      "audio_reactive": true,
+      "audio_smoothing": 0.8500000238418579,
+      "background_color": [
+        0.1137000024318695,
+        0.1137000024318695,
+        0.12549999356269836
+      ],
+      "constant_rotation_speed": 0.0,
+      "max_rotation_speed": 3.0,
+      "min_rotation_speed": 0.0010000000474974513,
+      "noise_amp": 0.0,
+      "oscill_amp": 0.0,
+      "oscill_freq": 1.0,
+      "pulse_amp": 0.0,
+      "rotation_decay": 0.9800000190734863,
+      "sphere_scale": 1.0,
+      "subdivisions": 3,
+      "twist_amp": 0.0,
+      "wave_amp": 0.0,
+      "wave_freq": 1.0,
+      "wireframe_color": [
+        0.5,
+        0.5,
+        0.699999988079071
+      ],
+      "wireframe_mode": true
+    },
+    "Pulse Color Effect": {
+      "base_color": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224
+      ],
+      "color_shift_mode": false,
+      "pulse_speed": 1.0,
+      "pulse_strength": 0.5
+    },
+    "Simple Wave Effect": {
+      "frequency": 20.0,
+      "is_inverted": false,
+      "speed": 2.5,
+      "wave_color": [
+        0.10000000149011612,
+        0.5,
+        1.0
+      ]
+    }
+  }
+}
