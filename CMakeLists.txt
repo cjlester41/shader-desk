@@ -16,6 +16,7 @@ set(BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 # Определяем путь для вывода всех плагинов. Эта переменная будет унаследована.
 set(PLUGIN_OUTPUT_DIR "${BIN_DIR}/effects")
 file(MAKE_DIRECTORY ${PLUGIN_OUTPUT_DIR})
+add_subdirectory(keyboard)
 
 # --- Зависимости ---
 find_package(PkgConfig REQUIRED)

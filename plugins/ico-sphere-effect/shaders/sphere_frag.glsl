@@ -6,11 +6,11 @@ in vec3 FragPos;
 in vec3 Normal;
 in float Phase;
 
-uniform vec3 wireframe_color;      // Цвет для режима сетки
-uniform vec3 background_color;     // Если используется
-uniform bool is_wireframe_pass;    // Флаг, указывающий на режим сетки
+uniform vec3 wireframe_color;      // Color for wireframe mode
+uniform vec3 background_color;     // If used
+uniform bool is_wireframe_pass;    // Flag indicating wireframe mode
 
-// Униформы для освещения
+// Uniforms for lighting
 uniform vec3 lightColor;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
@@ -20,12 +20,12 @@ out vec4 FragColor;
 void main()
 {
     if (is_wireframe_pass) {
-        // Режим сетки - используем wireframe_color
+        // Wireframe mode - use wireframe_color
         FragColor = vec4(wireframe_color, 1.0);
     } else {
-        // Режим поверхности - стандартная логика освещения
+        // Surface mode - standard lighting logic
         
-        // Пример простого освещения
+        // Example of simple lighting
         vec3 norm = normalize(Normal);
         vec3 lightDir = normalize(lightPos - FragPos);
         
