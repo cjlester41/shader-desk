@@ -237,6 +237,6 @@ target_link_libraries(plugin-interrogator PRIVATE nlohmann_json::nlohmann_json d
 
 # --- Подключаем директорию с плагинами для их сборки ---
 add_subdirectory(plugins)
-add_subdirectory(keyboard)
+add_subdirectory(keyboard) # ${CMAKE_CURRENT_BINARY_DIR}/keyboard)
 
 message(STATUS "Main project configured. Plugins will be built into: ${PLUGIN_OUTPUT_DIR}")
