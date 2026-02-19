@@ -16,7 +16,6 @@ set(BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 # Определяем путь для вывода всех плагинов. Эта переменная будет унаследована.
 set(PLUGIN_OUTPUT_DIR "${BIN_DIR}/effects")
 file(MAKE_DIRECTORY ${PLUGIN_OUTPUT_DIR})
-add_subdirectory(keyboard)
 
 # --- Зависимости ---
 find_package(PkgConfig REQUIRED)
@@ -238,5 +237,6 @@ target_link_libraries(plugin-interrogator PRIVATE nlohmann_json::nlohmann_json d
 
 # --- Подключаем директорию с плагинами для их сборки ---
 add_subdirectory(plugins)
+add_subdirectory(keyboard)
 
 message(STATUS "Main project configured. Plugins will be built into: ${PLUGIN_OUTPUT_DIR}")
