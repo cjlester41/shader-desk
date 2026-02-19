@@ -1,0 +1,352 @@
+// main.cpp
+#include <libevdev/libevdev.h>
+#include <linux/input.h>
+
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <poll.h>
+#include <unistd.h>
+#include <algorithm>
+#include <cmath>
+
+#include <csignal>
+#include <cerrno>
+#include <cstring>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <chrono>
+
+static volatile sig_atomic_t running = 1;
+static void handle_sig(int) { running = 0; }
+
+struct Device {
+    int fd = -1;
+    libevdev* dev = nullptr;
+    std::string path;
+    std::string name;
+    bool has_rel = false;
+    bool has_abs = false;
+    // For ABS devices - physical resolution info
+    double abs_x_min = 0, abs_x_max = 0, abs_x_range = 1;
+    double abs_y_min = 0, abs_y_max = 0, abs_y_range = 1;
+    
+    // Для ABS устройств - предыдущие позиции
+    double prev_abs_x = 0;
+    double prev_abs_y = 0;
+    bool has_prev_abs = false; // Флаг, что предыдущие позиции инициализированы
+    
+    // Для накопления изменений в рамках одного пакета событий
+    double pending_dx = 0;
+    double pending_dy = 0;
+    bool has_pending_event = false;
+
+    bool is_touch_event = false;
+};
+
+static std::string default_socket_path() {
+    const char* xr = std::getenv("XDG_RUNTIME_DIR");
+    if (xr && xr[0]) return std::string(xr) + "/evdev-pointer.sock";
+    uid_t uid = getuid();
+    return std::string("/tmp/evdev-pointer-") + std::to_string(uid) + ".sock";
+}
+
+static int create_send_socket() {
+    int s = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    if (s < 0) {
+        std::cerr << "socket() failed: " << strerror(errno) << "\n";
+    }
+    return s;
+}
+
+static bool send_json_to_socket(int sockfd, const std::string& socket_path, const std::string& json) {
+    if (sockfd < 0) return false;
+    struct sockaddr_un addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    if (socket_path.size() >= sizeof(addr.sun_path)) {
+        std::cerr << "socket path too long\n";
+        return false;
+    }
+    strncpy(addr.sun_path, socket_path.c_str(), sizeof(addr.sun_path) - 1);
+    ssize_t rc = sendto(sockfd, json.c_str(), json.size(), 0, (struct sockaddr*)&addr, sizeof(addr));
+    if (rc < 0) {
+        return false;
+    }
+    return true;
+}
+
+static std::vector<std::string> list_event_devices() {
+    std::vector<std::string> out;
+    const char* devdir = "/dev/input";
+    DIR* d = opendir(devdir);
+    if (!d) return out;
+    struct dirent* ent;
+    while ((ent = readdir(d)) != nullptr) {
+        if (strncmp(ent->d_name, "event", 5) == 0) {
+            out.emplace_back(std::string(devdir) + "/" + ent->d_name);
+        }
+    }
+    closedir(d);
+    return out;
+}
+
+static bool already_added(const std::vector<Device>& devs, const std::string& path) {
+    for (auto const& d : devs) if (d.path == path) return true;
+    return false;
+}
+
+static void scan_and_add_devices(std::vector<Device>& devices) {
+    auto list = list_event_devices();
+    for (auto& p : list) {
+        if (already_added(devices, p)) continue;
+        int fd = open(p.c_str(), O_RDONLY | O_NONBLOCK);
+        if (fd < 0) continue;
+        libevdev* dev = nullptr;
+        int rc = libevdev_new_from_fd(fd, &dev);
+        if (rc < 0) { close(fd); continue; }
+
+        bool has_rel = libevdev_has_event_code(dev, EV_REL, REL_X) && libevdev_has_event_code(dev, EV_REL, REL_Y);
+        bool has_abs = libevdev_has_event_code(dev, EV_ABS, ABS_X) && libevdev_has_event_code(dev, EV_ABS, ABS_Y);
+
+        if (!has_rel && !has_abs) {
+            libevdev_free(dev);
+            close(fd);
+            continue;
+        }
+
+        Device D;
+        D.fd = fd;
+        D.dev = dev;
+        D.path = p;
+        D.name = libevdev_get_name(dev);
+        D.has_rel = has_rel;
+        D.has_abs = has_abs;
+
+        if (has_abs) {
+            const struct input_absinfo* ax = libevdev_get_abs_info(dev, ABS_X);
+            const struct input_absinfo* ay = libevdev_get_abs_info(dev, ABS_Y);
+            
+            if (ax) {
+                D.abs_x_min = ax->minimum;
+                D.abs_x_max = ax->maximum;
+                D.abs_x_range = ax->maximum - ax->minimum;
+                D.prev_abs_x = ax->value; // Инициализируем предыдущую позицию
+            }
+            if (ay) {
+                D.abs_y_min = ay->minimum;
+                D.abs_y_max = ay->maximum;
+                D.abs_y_range = ay->maximum - ay->minimum;
+                D.prev_abs_y = ay->value; // Инициализируем предыдущую позицию
+            }
+            D.has_prev_abs = true;
+        }
+
+        devices.push_back(std::move(D));
+        std::cerr << "Added device: " << p << " name: " << D.name 
+                  << " (rel=" << has_rel << " abs=" << has_abs << ")";
+        if (has_abs) {
+            std::cerr << " X:[" << D.abs_x_min << "-" << D.abs_x_max << "]"
+                      << " Y:[" << D.abs_y_min << "-" << D.abs_y_max << "]";
+        }
+        std::cerr << "\n";
+    }
+}
+
+// В main.cpp (демон) в функции make_json
+static std::string make_json(const Device& d, double dx, double dy, bool is_normalized, 
+                            double vx = 0.0, double vy = 0.0, double dt = 0.0) {
+    using namespace std::chrono;
+    auto now = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    std::ostringstream oss;
+    oss << "{";
+    oss << "\"device\":\"" << d.path << "\",";
+    oss << "\"name\":\"" << d.name << "\",";
+    oss << "\"type\":\"" << (d.has_abs ? "abs" : "rel") << "\",";
+    oss << "\"normalized\":" << (is_normalized ? "true" : "false") << ","; // ← ВАЖНО: отправляем normalized
+    oss << "\"dx\":" << dx << ",";
+    oss << "\"dy\":" << dy << ",";
+    oss << "\"vx\":" << vx << ",";
+    oss << "\"vy\":" << vy << ",";
+    oss << "\"dt\":" << dt << ",";
+    oss << "\"ts\":" << now;
+    oss << "}";
+    return oss.str();
+}
+
+static void send_pending_event(Device* dptr, int send_sock, const std::string& dest_socket) {
+    if (dptr->has_pending_event && (dptr->pending_dx != 0 || dptr->pending_dy != 0)) {
+        std::string json = make_json(*dptr, dptr->pending_dx, dptr->pending_dy, dptr->has_abs);
+        if (!send_json_to_socket(send_sock, dest_socket, json)) {
+            static auto last_log = std::chrono::steady_clock::time_point();
+            auto now2 = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::seconds>(now2 - last_log).count() > 5) {
+                std::cerr << "Failed to send to socket " << dest_socket << "\n";
+                last_log = now2;
+            }
+        } else {
+            std::cerr << "Device: " << dptr->name 
+                      << " dX: " << dptr->pending_dx << " dY: " << dptr->pending_dy
+                      << " Norm: " << (dptr->has_abs ? "yes" : "no") << "\n";
+        }
+    }
+    
+    // Сбрасываем накопленные изменения
+    dptr->pending_dx = 0;
+    dptr->pending_dy = 0;
+    dptr->has_pending_event = false;
+}
+
+int main(int argc, char** argv) {
+    std::string dest_socket = default_socket_path();
+
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--socket" && i + 1 < argc) {
+            dest_socket = argv[++i];
+        } else if (a == "-h" || a == "--help") {
+            std::cout << "evdev-pointer-daemon [--socket PATH]\n";
+            return 0;
+        }
+    }
+
+    signal(SIGINT, handle_sig);
+    signal(SIGTERM, handle_sig);
+
+    std::vector<Device> devices;
+    scan_and_add_devices(devices);
+
+    int send_sock = create_send_socket();
+    if (send_sock < 0) return 1;
+
+    const int RESCAN_INTERVAL_MS = 5000;
+    auto last_scan = std::chrono::steady_clock::now();
+
+    while (running) {
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(now - last_scan).count() > RESCAN_INTERVAL_MS) {
+            scan_and_add_devices(devices);
+            last_scan = now;
+        }
+
+        std::vector<struct pollfd> pfds;
+        pfds.reserve(devices.size());
+        for (auto &d : devices) {
+            if (d.fd >= 0) {
+                struct pollfd pfd;
+                pfd.fd = d.fd;
+                pfd.events = POLLIN;
+                pfd.revents = 0;
+                pfds.push_back(pfd);
+            }
+        }
+
+        int timeout = 500;
+        int rc = poll(pfds.data(), pfds.size(), timeout);
+        if (rc < 0) {
+            if (errno == EINTR) continue;
+            std::cerr << "poll() failed: " << strerror(errno) << "\n";
+            break;
+        }
+
+        for (auto &pfd : pfds) {
+            if (!(pfd.revents & POLLIN)) continue;
+            
+            Device* dptr = nullptr;
+            for (auto &d : devices) if (d.fd == pfd.fd) { dptr = &d; break; }
+            if (!dptr) continue;
+
+            struct input_event ev;
+            while (true) {
+                int r = libevdev_next_event(dptr->dev, LIBEVDEV_READ_FLAG_NORMAL, &ev);
+                if (r == LIBEVDEV_READ_STATUS_SUCCESS) {
+                    // События SYN_REPORT (EV_SYN) означают конец пакета событий
+                    if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
+                        // Отправляем накопленные изменения
+                        send_pending_event(dptr, send_sock, dest_socket);
+                        continue;
+                    }
+
+                    if (ev.type == EV_REL) {
+                        if (ev.code == REL_X) {
+                            dptr->pending_dx += ev.value;
+                            dptr->has_pending_event = true;
+                        } else if (ev.code == REL_Y) {
+                            dptr->pending_dy += ev.value;
+                            dptr->has_pending_event = true;
+                        }
+                    } else if (ev.type == EV_ABS) {
+                        if (ev.code == ABS_X || ev.code == ABS_Y) {
+                            // Помечаем как касание, если предыдущих координат не было
+                            if (!dptr->has_prev_abs) {
+                                dptr->is_touch_event = true;
+                            } else {
+                                dptr->is_touch_event = false;
+                            }
+                            
+                            if (ev.code == ABS_X) {
+                                if (dptr->has_prev_abs) {
+                                    double diff = ev.value - dptr->prev_abs_x;
+                                    // Для касаний уменьшаем влияние
+                                    if (dptr->is_touch_event) {
+                                        diff *= 0.3; // Уменьшаем влияние первоначального касания
+                                    }
+                                    dptr->pending_dx += diff / dptr->abs_x_range;
+                                }
+                                dptr->prev_abs_x = ev.value;
+                                dptr->has_prev_abs = true;
+                            } else if (ev.code == ABS_Y) {
+                                if (dptr->has_prev_abs) {
+                                    double diff = ev.value - dptr->prev_abs_y;
+                                    if (dptr->is_touch_event) {
+                                        diff *= 0.3;
+                                    }
+                                    dptr->pending_dy += diff / dptr->abs_y_range;
+                                }
+                                dptr->prev_abs_y = ev.value;
+                                dptr->has_prev_abs = true;
+                            }
+                            dptr->has_pending_event = true;
+                        }
+                    }
+                } else if (r == LIBEVDEV_READ_STATUS_SYNC) {
+                    // При синхронизации тоже отправляем накопленные изменения
+                    send_pending_event(dptr, send_sock, dest_socket);
+                    continue;
+                } else if (r == -EAGAIN) {
+                    // Если событий больше нет, но у нас есть накопленные изменения, отправляем их
+                    if (dptr->has_pending_event) {
+                        send_pending_event(dptr, send_sock, dest_socket);
+                    }
+                    break;
+                } else {
+                    // При ошибке тоже отправляем накопленные изменения перед закрытием устройства
+                    if (dptr->has_pending_event) {
+                        send_pending_event(dptr, send_sock, dest_socket);
+                    }
+                    std::cerr << "libevdev_next_event returned " << r << " on " << dptr->path << "\n";
+                    if (dptr->dev) { libevdev_free(dptr->dev); dptr->dev = nullptr; }
+                    if (dptr->fd >= 0) { close(dptr->fd); dptr->fd = -1; }
+                    break;
+                }
+            }
+        }
+
+        devices.erase(std::remove_if(devices.begin(), devices.end(),
+                                     [](const Device& d){ return d.fd == -1 && d.dev == nullptr; }),
+                      devices.end());
+    }
+
+    for (auto &d : devices) {
+        if (d.dev) libevdev_free(d.dev);
+        if (d.fd >= 0) close(d.fd);
+    }
+    if (send_sock >= 0) close(send_sock);
+    std::cerr << "evdev-pointer-daemon exiting\n";
+    return 0;
+}
