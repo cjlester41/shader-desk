@@ -7,11 +7,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$SCRIPT_DIR}"
 
 # Пути к исполняемым файлам
-WP_BIN="${PROJECT_ROOT}/build/interactive-wallpaper"
+WP_BIN="${SCRIPT_DIR}/interactive-wallpaper"
 # Предположим, что демон мыши - это отдельный проект в той же директории
 # MOUSE_DAEMON_DIR="${PROJECT_ROOT}/keyboard" # Пример
 # MOUSE_BIN="${MOUSE_DAEMON_DIR}/build/evdev-pointer-daemon"
-MOUSE_BIN="${PROJECT_ROOT}/build/keyboard/evdev-pointer-daemon"
+MOUSE_BIN="${SCRIPT_DIR}/evdev-pointer-daemon"
 
 # --- Настройка сокета ---
 SOCKET_NAME="evdev-pointer.sock"

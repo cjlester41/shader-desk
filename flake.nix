@@ -1,5 +1,5 @@
 {
-  description = "Interactive wallpaper and evdev-pointer-daemon";
+  description = "Nix flake for interactive-wallpaper with a custom runner script";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -10,10 +10,10 @@
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-      in
-      {
-        packages.default = pkgs.stdenv.mkDerivation {
-          pname = "shader-desk";
+        
+        # Define the main application package
+        interactive-wallpaper-pkg = pkgs.stdenv.mkDerivation {
+          pname = "interactive-wallpaper";
           version = "0.1.0";
           src = ./.;
 
@@ -26,48 +26,43 @@
           buildInputs = with pkgs; [
             wayland
             wayland-protocols
-            libGL
-            # libegl-gles
+            libglvnd # Provides EGL and GLESv2
             libevdev
             glm
             nlohmann_json
-            libffi
-            # sed
           ];
 
-          # Matches CMake project name and target requirements [cite: 1]
+          # CMake configuration based on your CMakeLists.txt [cite: 1]
           cmakeFlags = [
             "-DCMAKE_BUILD_TYPE=Release"
           ];
         };
 
+        # Create a shell script that runs the binary
+        # This script can include environment variables or arguments if needed
+        interactive-wall = pkgs.writeShellScriptBin "interactive-wall" (builtins.readFile ./run.sh);
+
+      in
+      {
+        # The default package includes the original binary AND the runner script
+        packages.default = pkgs.symlinkJoin {
+          name = "interactive-wall";
+          paths = [ interactive-wallpaper-pkg interactive-wall ];
+        };
+
+        # Development shell for local building
         devShells.default = pkgs.mkShell {
-          name = "shader-desk-dev";
-          
-          # Includes all tools needed for compilation 
-          nativeBuildInputs = with pkgs; [
+          buildInputs = with pkgs; [
             cmake
             pkg-config
-            wayland-scanner
-            gdb
-          ];
-
-          # Libraries required by the project [cite: 15]
-          buildInputs = with pkgs; [
             wayland
             wayland-protocols
-            libGL
-            # libegl-gles
+            libglvnd
             libevdev
             glm
             nlohmann_json
+            wayland-scanner
           ];
-
-          shellHook = ''
-            echo "Shader-desk development environment loaded."
-            echo "Run 'cmake -B build && cmake --build build' to compile."
-          '';
         };
-      }
-    );
+      });
 }

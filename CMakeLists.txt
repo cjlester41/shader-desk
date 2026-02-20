@@ -7,22 +7,23 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Рекомендуется для удобства отладки/IDE
+# Recommended for debugging/IDE convenience
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# --- Пути ---
+# --- Paths ---
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-# Определяем путь для вывода всех плагинов. Эта переменная будет унаследована.
+
+# Define the output path for all plugins. This variable will be inherited.
 set(PLUGIN_OUTPUT_DIR "${BIN_DIR}/effects")
 file(MAKE_DIRECTORY ${PLUGIN_OUTPUT_DIR})
 
-# --- Зависимости ---
+# --- Dependencies ---
 find_package(PkgConfig REQUIRED)
 find_package(glm REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
-# Wayland/GL ES зависимости через pkg-config
+# Wayland/GL ES dependencies via pkg-config
 pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
 pkg_check_modules(WAYLAND_EGL REQUIRED wayland-egl)
 pkg_check_modules(EGL REQUIRED egl)
@@ -36,7 +37,7 @@ pkg_check_modules(WAYLAND_PROTOCOLS wayland-protocols)
 find_program(WAYLAND_SCANNER NAMES wayland-scanner)
 find_program(SED NAMES sed)
 
-# Папка вывода для сгенерированных протоколов
+# Output folder for generated protocols
 set(PROTOCOL_OUTPUT_DIR "${BIN_DIR}")
 file(MAKE_DIRECTORY "${PROTOCOL_OUTPUT_DIR}")
 
@@ -108,7 +109,7 @@ if(WAYLAND_SCANNER AND SED)
         list(APPEND PROTOCOL_SOURCES "${VIEWPORTER_SOURCE}")
         list(APPEND GENERATED_PROTOCOL_HEADERS "${VIEWPORTER_HEADER}")
     else()
-        # try alternate location
+        # Try alternate location
         set(VIEWPORTER_XML_ALT "/usr/local/share/wayland-protocols/stable/viewporter/viewporter.xml")
         if(EXISTS "${VIEWPORTER_XML_ALT}")
             add_custom_command(
@@ -153,7 +154,7 @@ if(WAYLAND_SCANNER AND SED)
         message(WARNING "xdg-shell xml not found at ${XDG_XML}")
     endif()
 
-    # custom target to build all protocols
+    # Custom target to build all protocols
     add_custom_target(wayland_protocols ALL
         DEPENDS ${PROTOCOL_SOURCES} ${GENERATED_PROTOCOL_HEADERS}
     )
@@ -162,7 +163,7 @@ else()
 endif()
 
 #
-# Если источники протоколов не были сгенерированы, попробуем найти уже готовые файлы
+# If protocol sources were not generated, try to find existing files
 #
 if(PROTOCOL_SOURCES STREQUAL "")
     set(POSSIBLE_PROTO_SRCS
@@ -182,7 +183,7 @@ if(PROTOCOL_SOURCES STREQUAL "")
     endforeach()
 endif()
 
-# --- Основные исходники приложения ---
+# --- Main Application Sources ---
 set(APP_SRC_FILES
     "${SRC_DIR}/main.cpp"
     "${SRC_DIR}/interactive-wallpaper.cpp"
@@ -191,7 +192,6 @@ set(APP_SRC_FILES
     "${SRC_DIR}/plugin-manager.cpp"
     "${SRC_DIR}/audio-daemon-client.cpp"
     "${SRC_DIR}/shader-utils.cpp"
-    
 )
 list(APPEND APP_SRC_FILES ${PROTOCOL_SOURCES})
 
@@ -199,7 +199,7 @@ add_library(shader_utils SHARED "${SRC_DIR}/shader-utils.cpp")
 target_include_directories(shader_utils PRIVATE "${SRC_DIR}")
 
 
-# --- Сборка основного приложения ---
+# --- Build Main Application ---
 add_executable(interactive-wallpaper ${APP_SRC_FILES})
 
 target_include_directories(interactive-wallpaper PRIVATE
@@ -224,19 +224,32 @@ target_link_libraries(interactive-wallpaper PRIVATE
     shader_utils
 )
 
-# Если сгенерирован target wayland_protocols — добавить зависимость
+# Add dependency if wayland_protocols target was generated
 if(TARGET wayland_protocols)
     add_dependencies(interactive-wallpaper wayland_protocols)
 endif()
 
 
-# --- Сборка утилиты для опроса плагинов ---
+# --- Build Utility for Interrogating Plugins ---
 add_executable(plugin-interrogator "${SRC_DIR}/plugin-interrogator.cpp")
 target_include_directories(plugin-interrogator PRIVATE "${SRC_DIR}")
 target_link_libraries(plugin-interrogator PRIVATE nlohmann_json::nlohmann_json dl)
 
-# --- Подключаем директорию с плагинами для их сборки ---
+# --- Include Subdirectories ---
 add_subdirectory(plugins)
-add_subdirectory(keyboard) # ${CMAKE_CURRENT_BINARY_DIR}/keyboard)
+add_subdirectory(keyboard)
+
+# --- Installation ---
+include(GNUInstallDirs)
+
+# Install main binaries
+install(TARGETS interactive-wallpaper plugin-interrogator
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Install the shared utility library
+install(TARGETS shader_utils
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
 
 message(STATUS "Main project configured. Plugins will be built into: ${PLUGIN_OUTPUT_DIR}")
