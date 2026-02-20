@@ -40,7 +40,7 @@
 
         # Create a shell script that runs the binary
         # This script can include environment variables or arguments if needed
-        interactive-wall = pkgs.writeShellScriptBin "interactive-wall" (builtins.readFile ./run.sh);
+        interactive-wall = pkgs.writeShellScriptBin "iwp" (builtins.readFile ./run.sh);
 
       in
       {
