@@ -12,30 +12,58 @@
         pkgs = import nixpkgs { inherit system; };
         
         # Define the main application package
+        
         interactive-wallpaper-pkg = pkgs.stdenv.mkDerivation {
           pname = "interactive-wallpaper";
           version = "0.1.0";
-          src = ./.;
+          src = ./.; 
 
           nativeBuildInputs = with pkgs; [
             cmake
             pkg-config
             wayland-scanner
-          ];
+          ]; 
 
           buildInputs = with pkgs; [
             wayland
             wayland-protocols
-            libglvnd # Provides EGL and GLESv2
+            libglvnd
             libevdev
             glm
             nlohmann_json
           ];
 
-          # CMake configuration based on your CMakeLists.txt [cite: 1]
+          # These flags prevent CMake from hardcoding the /build directory 
           cmakeFlags = [
             "-DCMAKE_BUILD_TYPE=Release"
-          ];
+            "-DCMAKE_SKIP_BUILD_RPATH=OFF" 
+            "-DCMAKE_BUILD_WITH_INSTALL_RPATH=ON"
+            "-DCMAKE_INSTALL_RPATH=$out/lib"
+          ]; 
+
+          installPhase = ''
+            runHook preInstall
+            
+            # Create the output directories in the Nix store [cite: 6]
+            mkdir -p $out/lib $out/bin $out/share/interactive-wallpaper
+            
+            if [ -d "effects" ]; then
+                          cp -r effects $out/share/interactive-wallpaper/
+                        fi
+
+            # Copy all shared libraries (.so files) 
+            find . -name "*.so*" -exec cp -t $out/lib {} +
+            
+            # Copy the executable(s) [cite: 7, 9]
+            find . -maxdepth 1 -executable -type f -exec cp -t $out/bin {} +
+            
+            runHook postInstall
+          '';
+      
+          # This is the 'magic' that removes the forbidden /build/ references [cite: 1]
+          preFixup = ''
+            find $out -type f -exec patchelf --shrink-rpath {} \;
+          '';
         };
 
         # Create a shell script that runs the binary
