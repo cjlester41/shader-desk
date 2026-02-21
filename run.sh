@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# if [ ! -f ~/.config/interactive-wallpaper ]; then
-#     mkdir -p ~/.config/interactive-wallpaper
-#     cp $out/share/interactive-wallpaper/shaders ~/.config/interactive-wallpaper
+DRV_DIR="$(dirname "$(dirname "$(readlink -f $(which interactive-wallpaper))")")"
+echo "$DRV_DIR"
+
+if [ ! -d ~/.config/interactive-wallpaper ]; then
+    mkdir -p ~/.config/interactive-wallpaper
+    cp -r ${DRV_DIR}/share/interactive-wallpaper/* ~/.config/interactive-wallpaper
 #     # chmod +w \$HOME/.config/my-app/config.json
-#   fi
+fi
+  
 # --- Конфигурация путей ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+echo "$SCRIPT_DIR"
 # Предполагаем, что скрипт лежит в корне проекта
 PROJECT_ROOT="${PROJECT_ROOT:-$SCRIPT_DIR}"
 

@@ -40,23 +40,25 @@
           ]; 
 
           installPhase = ''
+            
             runHook preInstall
             
-            # Create the output directories in the Nix store [cite: 6]
             mkdir -p $out/lib $out/bin $out/share/interactive-wallpaper
             
             if [ -d "effects" ]; then
               cp -r effects $out/share/interactive-wallpaper/
             fi
 
-            cp myconfig.json $out/share/interactive-wallpaper/
-            # ls -R
+            cp $src/config.json $out/share/interactive-wallpaper/
             
             # Copy all shared libraries (.so files) 
-            # find . -name "*.so*" -exec cp -t $out/lib {} +
+            # find . -maxdepth 0 -name "*.so*" -exec cp -t $out/lib {} +
+            
+            cp libshader_utils.so $out/lib
             
             # Copy the executable(s) [cite: 7, 9]
-            find . -maxdepth 1 -executable -type f -exec cp -t $out/bin {} +
+            find . -maxdepth 2 -executable -type f ! -name "*.so*" -exec cp -t $out/bin {} +
+            # find . -maxdepth 2 -executable -type f -exec cp -t $out/bin {} +
             
             runHook postInstall
           '';
