@@ -11,8 +11,6 @@
       let
         pkgs = import nixpkgs { inherit system; };
         
-        # Define the main application package
-        
         interactive-wallpaper-pkg = pkgs.stdenv.mkDerivation {
           pname = "interactive-wallpaper";
           version = "0.1.0";
@@ -48,11 +46,14 @@
             mkdir -p $out/lib $out/bin $out/share/interactive-wallpaper
             
             if [ -d "effects" ]; then
-                          cp -r effects $out/share/interactive-wallpaper/
-                        fi
+              cp -r effects $out/share/interactive-wallpaper/
+            fi
 
+            cp myconfig.json $out/share/interactive-wallpaper/
+            # ls -R
+            
             # Copy all shared libraries (.so files) 
-            find . -name "*.so*" -exec cp -t $out/lib {} +
+            # find . -name "*.so*" -exec cp -t $out/lib {} +
             
             # Copy the executable(s) [cite: 7, 9]
             find . -maxdepth 1 -executable -type f -exec cp -t $out/bin {} +
@@ -64,11 +65,15 @@
           preFixup = ''
             find $out -type f -exec patchelf --shrink-rpath {} \;
           '';
+          
+          # postInstall = ''
+          #   cp -v ./myconfig.json $out/share/interactive-wallpaper/
+          # '';
         };
 
         # Create a shell script that runs the binary
         # This script can include environment variables or arguments if needed
-        interactive-wall = pkgs.writeShellScriptBin "iwp" (builtins.readFile ./run.sh);
+        interactive-wall = pkgs.writeShellScriptBin "shader-desk" (builtins.readFile ./run.sh);
 
       in
       {

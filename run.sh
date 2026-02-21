@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ ! -f \$HOME/.config/interactive-wallpaper ]; then
-    mkdir -p \$HOME/.config/interactive-wallpaper
-    cp $out/share/interactive-wallpaper/shaders \$HOME/.config/interactive-wallpaper
-    # chmod +w \$HOME/.config/my-app/config.json
-  fi
+# if [ ! -f ~/.config/interactive-wallpaper ]; then
+#     mkdir -p ~/.config/interactive-wallpaper
+#     cp $out/share/interactive-wallpaper/shaders ~/.config/interactive-wallpaper
+#     # chmod +w \$HOME/.config/my-app/config.json
+#   fi
 # --- Конфигурация путей ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Предполагаем, что скрипт лежит в корне проекта
