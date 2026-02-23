@@ -1,6 +1,12 @@
 [README ru](README_ru.md) | [README en](README.md)
 # Interactive Wayland Wallpaper
 
+A fork of gitea.com/SeeTheWall/shader-desk to install via nix flake. The mouse daemon has been replaced by a keyboard daemon to use vim bindings for directional movement of the shader, hjlk for incremental movement and mod + hjlk for larger panning. Optimized for niri bindings and untested on other compositors.
+
+The keyboard daemon is installed with the flake and the .config files are generated on the first run.
+
+Work in progress...
+
 Beautiful, interactive, and easily configurable live wallpapers for your Wayland desktop. The project uses hardware acceleration (OpenGL ES) for rendering dynamic shaders with minimal resource consumption.
 
 The main effect is an animated icosphere that responds to your cursor movements and music.
