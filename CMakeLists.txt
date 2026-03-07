@@ -13,6 +13,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # --- Paths ---
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+set(CFG_DIR "~/.config/interactive-wallpaper")
 
 # Define the output path for all plugins. This variable will be inherited.
 set(PLUGIN_OUTPUT_DIR "${BIN_DIR}/effects")
@@ -250,6 +251,15 @@ install(TARGETS interactive-wallpaper plugin-interrogator
 # Install the shared utility library
 install(TARGETS shader_utils
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(
+    FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.json # Source file path
+    DESTINATION
+        ${CFG_DIR} # Destination path
+    # COMPONENT
+        # config # Optional: group related filessd
 )
 
 message(STATUS "Main project configured. Plugins will be built into: ${PLUGIN_OUTPUT_DIR}")

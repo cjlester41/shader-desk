@@ -1,29 +1,56 @@
 #version 300 es
 precision mediump float;
 
-in float vPhase;
+in vec3 FragPos;
+in vec3 Normal;
+in float Phase;
+
+uniform vec3 wireframe_color;
+uniform bool is_wireframe_pass;
+uniform bool is_point_pass; // Toggle this when drawing GL_POINTS
+
+// Lighting Uniforms
+uniform vec3 lightColor;
+uniform vec3 lightPos;
+uniform vec3 viewPos;
+
 out vec4 FragColor;
 
-uniform float time;
-
-// @param glow_color | vec3 | 0.0, 0.8, 1.0 | Color of the points (R,G,B)
-uniform vec3 glow_color;
-
-void main() {
-    // gl_PointCoord (0.0 to 1.0) maps to the surface of the generated point
-    vec2 coord = gl_PointCoord - vec2(0.5);
-    float dist = length(coord);
-
-    // Discard pixels outside the radius to make the point a perfect circle
-    if (dist > 0.5) {
-        discard;
+void main()
+{
+    if (is_point_pass) {
+        // Create a circular mask
+        vec2 uv = gl_PointCoord - vec2(0.5);
+        float dist = dot(uv, uv);
+        if (dist > 0.25) {
+            discard; // Make the square point a circle
+        }
+        
+        // Optional: simple anti-aliasing for the dot edges
+        float alpha = 1.0 - smoothstep(0.20, 0.25, dist);
+        FragColor = vec4(wireframe_color, alpha);
+        
+    } else if (is_wireframe_pass) {
+        FragColor = vec4(wireframe_color, 1.0);
+        
+    } else {
+        // Standard Surface Lighting
+        vec3 norm = normalize(Normal);
+        vec3 lightDir = normalize(lightPos - FragPos);
+        
+        float ambientStrength = 0.3;
+        vec3 ambient = ambientStrength * lightColor;
+        
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 diffuse = diff * lightColor;
+        
+        float specularStrength = 0.5;
+        vec3 viewDir = normalize(viewPos - FragPos);
+        vec3 reflectDir = reflect(-lightDir, norm);  
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+        vec3 specular = specularStrength * spec * lightColor;
+            
+        vec3 result = (ambient + diffuse + specular);
+        FragColor = vec4(result, 1.0);
     }
-
-    // Create a soft radial falloff (glow)
-    float intensity = 1.0 - smoothstep(0.0, 0.5, dist);
-    
-    // Add a subtle flicker based on vertex phase [cite: 16, 50]
-    float flicker = 0.7 + 0.3 * sin(time * 3.0 + vPhase);
-
-    FragColor = vec4(glow_color * intensity * flicker, intensity);
 }

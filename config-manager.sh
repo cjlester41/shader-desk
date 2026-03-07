@@ -3,7 +3,9 @@
 
 CONFIG_DIR="$HOME/.config/interactive-wallpaper"
 EFFECTS_DIR="$CONFIG_DIR/effects"
-CONFIG_FILE="$HOME/shader-desk/auto_config.json" #$CONFIG_DIR/config.json"
+CONFIG_FILE="$CONFIG_DIR/config.json"
+DRV_DIR=$(dirname "$(dirname "$(readlink -f "$0")")")
+echo "$DRV_DIR"
 
 # Helper function to check for jq
 check_jq() {
@@ -40,7 +42,7 @@ get_plugin_params_json() {
     local so_file="$EFFECTS_DIR/${plugin_name}.so"
     
     # Путь к нашей новой утилите. Предполагаем, что скрипт запускается из корня проекта.
-    local interrogator_bin="./build/plugin-interrogator"
+    local interrogator_bin="$DRV_DIR/bin/plugin-interrogator"
 
     if [ ! -f "$so_file" ]; then
         echo "Warning: Plugin library not found for '$plugin_name' at '$so_file'." >&2
@@ -191,7 +193,7 @@ list_effects() {
         return
     fi
 
-    local interrogator_bin="./build/plugin-interrogator"
+    local interrogator_bin="$DRV_DIR/bin/plugin-interrogator"
     if [ ! -x "$interrogator_bin" ]; then
         echo "Error: plugin-interrogator tool not found or not executable at '$interrogator_bin'." >&2
         echo "Please build the project first." >&2

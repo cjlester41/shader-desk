@@ -29,18 +29,12 @@ private:
     float time = 0.0f;
 
     // --- Parameter Member Variables ---
-    float sphere_scale = 1.0;
-    float point_size = 10.0;
-    float audio_bass = 0.0;
-    glm::vec3 glow_color = glm::vec3(0.0f, 0.8f, 1.0f);
+
 
     // --- Uniform Locations ---
     GLuint u_time = 0;
     GLuint u_resolution = 0;
-    GLuint u_sphere_scale = 0;
-    GLuint u_point_size = 0;
-    GLuint u_audio_bass = 0;
-    GLuint u_glow_color = 0;
+
 };
 
 #endif // GLOWING_POINTS_EFFECT_HPP

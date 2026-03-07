@@ -15,30 +15,13 @@ const char* GlowingPointsEffectEffect::get_name() const {
 
 std::vector<EffectParameter> GlowingPointsEffectEffect::get_parameters() const {
     return {
-        {"sphere_scale", "Global scale of the sphere [cite: 28]", sphere_scale},
-        {"point_size", "Base size of the glowing points", point_size},
-        {"audio_bass", "Bass reactivity for point pulsing [cite: 30]", audio_bass},
-        {"glow_color", "Color of the points (R,G,B)", glow_color},
+
     };
 }
 
 void GlowingPointsEffectEffect::set_parameter(const std::string& name, const EffectParameterValue& value) {
     try {
-        if (name == "sphere_scale") {
-            sphere_scale = std::get<float>(value);
-        }
-        else if (name == "point_size") {
-            point_size = std::get<float>(value);
-        }
-        else if (name == "audio_bass") {
-            audio_bass = std::get<float>(value);
-        }
-        else if (name == "glow_color") {
-            glow_color = std::get<glm::vec3>(value);
-        }
-        else {
-             std::cerr << "Warning: Unknown parameter '" << name << "'." << std::endl;
-        }
+
     } catch (const std::bad_variant_access& e) {
         std::cerr << "Warning: Type mismatch for parameter '" << name << "'. " << e.what() << std::endl;
     }
@@ -56,10 +39,7 @@ bool GlowingPointsEffectEffect::initialize(uint32_t width, uint32_t height) {
     // Get uniform locations
     u_time = glGetUniformLocation(program, "time");
     u_resolution = glGetUniformLocation(program, "resolution");
-    u_sphere_scale = glGetUniformLocation(program, "sphere_scale");
-    u_point_size = glGetUniformLocation(program, "point_size");
-    u_audio_bass = glGetUniformLocation(program, "audio_bass");
-    u_glow_color = glGetUniformLocation(program, "glow_color");
+
 
     // Setup VAO for a fullscreen quad/triangle
     glGenVertexArrays(1, &vao);
@@ -77,10 +57,7 @@ void GlowingPointsEffectEffect::render(uint32_t width, uint32_t height) {
     glUniform2f(u_resolution, static_cast<float>(width), static_cast<float>(height));
     
     // Set parameter uniforms
-    glUniform1f(u_sphere_scale, sphere_scale);
-    glUniform1f(u_point_size, point_size);
-    glUniform1f(u_audio_bass, audio_bass);
-    glUniform3fv(u_glow_color, 1, &glow_color[0]);
+
 
     // Draw a fullscreen triangle (no VBO needed)
     glBindVertexArray(vao);
